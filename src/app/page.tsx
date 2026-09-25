@@ -73,7 +73,7 @@ export default function Dashboard() {
           <NavItem icon={<BarChart3 className="w-4 h-4" />} label="Dashboard" active />
           <NavItem icon={<Briefcase className="w-4 h-4" />} label="Engagements" />
           <NavItem icon={<Target className="w-4 h-4" />} label="Templates" badge="Soon" />
-          <NavItem icon={<Zap className="w-4 h-4" />} label="Integrations" badge="Soon" />
+          <NavItem icon={<Zap className="w-4 h-4" />} label="Integrations" href="/settings" />
         </nav>
 
         <div className="p-3 border-t space-y-1" style={{ borderColor: 'var(--border)' }}>

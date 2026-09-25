@@ -14,13 +14,14 @@ import {
   LayoutList,
   MessageSquare,
   BookOpen,
-  Settings2,
   ChevronRight,
 } from 'lucide-react';
 import { useEngagements } from '@/hooks/useEngagements';
 import ChatInterface from '@/components/chat/ChatInterface';
 import ActionPlanView from '@/components/output/ActionPlanView';
 import FileUploadZone from '@/components/upload/FileUploadZone';
+import IntegrationPanel from '@/components/integrations/IntegrationPanel';
+import { useIntegrations } from '@/hooks/useIntegrations';
 import { formatDate, renderMarkdown, cn } from '@/lib/utils';
 import type { Message, ActionItem } from '@/types';
 
@@ -29,7 +30,8 @@ type Tab = 'chat' | 'summary' | 'plan' | 'docs';
 export default function EngagementPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { engagements, loaded, updateEngagement, addDocument, deleteEngagement } = useEngagements();
+  const { engagements, loaded, updateEngagement, addDocument } = useEngagements();
+  const { config, isConnected } = useIntegrations();
   const [tab, setTab] = useState<Tab>('chat');
   const [copiedSummary, setCopiedSummary] = useState(false);
 
@@ -48,11 +50,30 @@ export default function EngagementPage() {
     [id, updateEngagement]
   );
 
+  const triggerMakeWebhook = useCallback(
+    async (event: string) => {
+      if (!isConnected('make')) return;
+      try {
+        await fetch('/api/integrations/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhookUrl: config.make.webhookUrl, event, engagement }),
+        });
+      } catch {
+        // non-fatal; fire-and-forget
+      }
+    },
+    [config.make, isConnected, engagement]
+  );
+
   const handleSummaryUpdate = useCallback(
     (summary: string) => {
       updateEngagement(id, { executiveSummary: summary });
+      if (config.make.triggerOnAnalysis) {
+        setTimeout(() => triggerMakeWebhook('analysis_completed'), 500);
+      }
     },
-    [id, updateEngagement]
+    [id, updateEngagement, config.make.triggerOnAnalysis, triggerMakeWebhook]
   );
 
   const handleActionPlanUpdate = useCallback(
@@ -320,6 +341,8 @@ export default function EngagementPage() {
                   </button>
                 </div>
               )}
+
+              <IntegrationPanel engagement={engagement} />
             </div>
           </div>
         )}
@@ -364,6 +387,8 @@ export default function EngagementPage() {
                 items={engagement.actionPlan}
                 onChange={handleActionPlanUpdate}
               />
+
+              <IntegrationPanel engagement={engagement} />
             </div>
           </div>
         )}
